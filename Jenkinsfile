@@ -11,7 +11,7 @@ pipeline {
         API_IMAGE = "${DOCKERHUB_USER}/api"
 
         JFROG_USER = 'anushahp16@gmail.com'
-        JFROG_PASSWORD = credentials('jfrog_token')  // Secret text credential
+        JFROG_PASSWORD = credentials('jfrog_token') // Secret text credential
         HELM_REPO_URL = 'https://trial8mol56.jfrog.io/artifactory/reactui-api-helm'
 
         AWS_REGION = 'ap-south-1'  // Adjust with your AWS region
@@ -52,7 +52,7 @@ pipeline {
             steps {
                 sh '''
                     echo "Packaging Helm chart..."
-                    cd /home/ubuntu/reactui-api  // Ensure this is the correct directory for your Helm chart
+                    cd /home/ubuntu/reactui-api
                     sudo helm package helm-ui-api --version ${BUILD_NUMBER}
 
                     echo "Pushing Helm chart to JFrog..."
@@ -76,8 +76,8 @@ pipeline {
                     // Use Helm to deploy the package to the EKS cluster
                     sh '''
                         echo "Adding Helm chart repo..."
-                        helm repo add api-ui ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD}
-                        helm repo update  // Ensure repo update before Helm install
+                        helm repo add api-ui ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD} || echo "Repo already exists, skipping add"
+                        helm repo update
 
                         echo "Upgrading Helm release with new image tags..."
                         helm upgrade api-ui api-ui/api-ui --version ${BUILD_NUMBER} \
