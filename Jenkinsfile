@@ -56,7 +56,7 @@ pipeline {
                     sudo helm package helm-ui-api --version ${BUILD_NUMBER}
 
                     echo "Pushing Helm chart to JFrog..."
-                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T helm-ui-api-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/helm-ui-api-${BUILD_NUMBER}.tgz
+                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T helm-ui-api-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/ui-api-${BUILD_NUMBER}.tgz
                 '''
             }
         }
@@ -80,7 +80,7 @@ pipeline {
                         helm repo update
 
                         echo "Installing Helm release..."
-                        helm install reactui-api-helm/api-ui --version ${BUILD_NUMBER} --namespace default \
+                        helm install reactui-api-release reactui-api-helm/api-ui --version ${BUILD_NUMBER} --namespace default \
                           --set ui.image.tag=${BUILD_NUMBER} \
                           --set api.image.tag=${BUILD_NUMBER}
                     '''
