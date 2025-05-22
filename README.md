@@ -208,3 +208,12 @@ authorization: JWT_TOKEN (returned by Login request)
 
 ---
 **[React Flask Authentication](https://blog.appseed.us/react-flask-authentication/)** - Open-source full-stack seed project provided by **[AppSeed](https://appseed.us/)**
+
+
+DEPLOYMENT DONE THROUGH EKS(Modifications to be done)
+- Replace env value of REACT_APP_BACKEND_SERVER to your backend URL in ui-deployment manifest.
+
+
+
+
+
