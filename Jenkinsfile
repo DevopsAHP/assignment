@@ -86,7 +86,7 @@ pipeline {
                         helm repo update
 
                         echo "Installing Helm release..."
-                        helm install ${HELM_RELEASE_NAME} reactui-api/helm-ui-api --version ${BUILD_NUMBER} --namespace default \
+                        helm install reactui-api-release reactui-api/helm-ui-api --version ${BUILD_NUMBER} --namespace default \
                           --set ui.image.tag=${BUILD_NUMBER} \
                           --set api.image.tag=${BUILD_NUMBER}
                     '''
