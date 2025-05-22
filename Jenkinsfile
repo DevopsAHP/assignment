@@ -41,4 +41,77 @@ pipeline {
             steps {
                 sh '''
                     echo "Pushing Docker images..."
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push ${REACT_IMAGE}:${BUILD_NUMBER}
+                    docker push ${API_IMAGE}:${BUILD_NUMBER}
+                '''
+            }
+        }
+
+        stage('Package & Push Helm Charts') {
+            steps {
+                sh '''
+                    echo "Packaging Helm chart..."
+                    cd /home/ubuntu/reactui-api
+                    sudo helm package helm-ui-api --version ${BUILD_NUMBER}
+
+                    echo "Pushing Helm chart to JFrog..."
+                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T helm-ui-api-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/helm-ui-api-${BUILD_NUMBER}.tgz
+                '''
+            }
+        }
+
+        stage('Deploy to EKS via Helm') {
+            agent {
+                label 'eks-instance'
+            }
+            steps {
+                script {
+                    // Configure AWS CLI to interact with your EKS cluster
+                    sh '''
+                        echo "Configuring AWS CLI and EKS..."
+                        aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
+                    '''
+                    
+                    // Use Helm to deploy the package to the EKS cluster
+                    sh '''
+                        echo "Adding Helm chart repo..."
+                        helm repo add reactui-api ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD}
+                        helm repo update
+                    '''
+
+                    echo "Checking if Helm release exists..."
+
+                    // Check if the Helm release exists
+                    def releaseExists = sh(script: "helm list --namespace default -q | grep -w reactui-api-release", returnStatus: true)
+                    if (releaseExists == 0) {
+                        echo "Helm release exists. Upgrading release..."
+                        // Upgrade the existing release if it exists
+                        sh """
+                            helm upgrade reactui-api-release reactui-api/helm-ui-api --version ${BUILD_NUMBER} --namespace default \
+                                --set ui.image.tag=${BUILD_NUMBER} \
+                                --set api.image.tag=${BUILD_NUMBER}
+                        """
+                    } else {
+                        echo "Helm release does not exist. Installing release..."
+                        // Install the release if it doesn't exist
+                        sh """
+                            helm install reactui-api-release reactui-api/helm-ui-api --version ${BUILD_NUMBER} --namespace default \
+                                --set ui.image.tag=${BUILD_NUMBER} \
+                                --set api.image.tag=${BUILD_NUMBER}
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline successfully completed!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for errors.'
+        }
+    }
+}
