@@ -56,7 +56,7 @@ pipeline {
                     sudo helm package helm-ui-api --version ${BUILD_NUMBER}
 
                     echo "Pushing Helm chart to JFrog..."
-                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T helm-ui-api-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/helm-ui-api-${BUILD_NUMBER}.tgz  // Ensure correct file name
+                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T helm-ui-api-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/helm-ui-api-${BUILD_NUMBER}.tgz
                 '''
             }
         }
@@ -73,20 +73,4 @@ pipeline {
                         aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
                     '''
                     
-                    // Use Helm to deploy the package to the EKS cluster
-                    sh '''
-                        echo "Adding Helm chart repo..."
-                        helm repo add api-ui ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD}
-                        helm repo update  // Ensure repo update before Helm install
-
-                        echo "Upgrading Helm release with new image tags..."
-                        helm upgrade api-ui api-ui/api-ui --version ${BUILD_NUMBER} \
-                          --install --namespace default \
-                          --set ui.image.tag=${BUILD_NUMBER} \
-                          --set api.image.tag=${BUILD_NUMBER}
-                    '''
-                }
-            }
-        }
-    }
-}
+                    // Use Helm to d
