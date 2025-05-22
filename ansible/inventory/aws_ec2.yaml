@@ -1,0 +1,13 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - ap-south-1
+filters:
+  "tag:kubernetes.io/cluster/my-cluster": "owned"
+  "tag:Role": "eks-node"
+  "instance-state-name": "running"
+keyed_groups:
+  - key: tags.Role
+  - key: tags.Environment
+  - key: instance_type
+hostnames:
+  - public_ip_address

@@ -1,0 +1,45 @@
+---
+- name: Post-Provision Configuration for Kubernetes Nodes
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - software-properties-common
+        update_cache: yes
+
+    - name: Add Kubernetes APT key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: Add Kubernetes APT repository
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+
+    - name: Install kubectl
+      apt:
+        name: kubectl
+        state: latest
+
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Set up kubeconfig
+      shell: |
+        mkdir -p /home/ubuntu/.kube
+        aws eks --region ap-south-1 update-kubeconfig --name my-cluster
+      environment:
+        AWS_PROFILE: default
+      become_user: ubuntu
+
