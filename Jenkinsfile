@@ -56,7 +56,7 @@ pipeline {
                     sudo helm package helm-ui-api --version ${BUILD_NUMBER}
 
                     echo "Pushing Helm chart to JFrog..."
-                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T api-ui-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/api-ui-${BUILD_NUMBER}.tgz
+                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T helm-ui-api-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/ui-api-${BUILD_NUMBER}.tgz
                 '''
             }
         }
