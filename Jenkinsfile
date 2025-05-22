@@ -3,7 +3,7 @@ pipeline {
         label 'docker'
     }
     environment {
-        DOCKERHUB_CREDS = credentials('dockerhub-creds')
+        DOCKERHUB_CREDS = credentials('docker')
         DOCKERHUB_USER = "${DOCKERHUB_CREDS_USR}"
         DOCKER_USER = "${DOCKERHUB_CREDS_USR}"
         DOCKER_PASS = "${DOCKERHUB_CREDS_PSW}"
