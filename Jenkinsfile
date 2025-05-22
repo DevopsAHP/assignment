@@ -52,7 +52,8 @@ pipeline {
             steps {
                 sh '''
                     echo "Packaging Helm chart..."
-                    sudo helm package api-ui --version ${BUILD_NUMBER}
+                    cd /home/ubuntu/reactui-api
+                    sudo helm package helm-ui-api --version ${BUILD_NUMBER}
 
                     echo "Pushing Helm chart to JFrog..."
                     curl -u "$JFROG_USER:$JFROG_PASSWORD" -T api-ui-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/api-ui-${BUILD_NUMBER}.tgz
