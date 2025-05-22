@@ -73,4 +73,20 @@ pipeline {
                         aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
                     '''
                     
-                    // Use Helm to d
+                    // Use Helm to deploy the package to the EKS cluster
+                    sh '''
+                        echo "Adding Helm chart repo..."
+                        helm repo add api-ui ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD}
+                        helm repo update  // Ensure repo update before Helm install
+
+                        echo "Upgrading Helm release with new image tags..."
+                        helm upgrade api-ui api-ui/api-ui --version ${BUILD_NUMBER} \
+                          --install --namespace default \
+                          --set ui.image.tag=${BUILD_NUMBER} \
+                          --set api.image.tag=${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+    }
+}
