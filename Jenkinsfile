@@ -76,7 +76,7 @@ pipeline {
                     // Use Helm to deploy the package to the EKS cluster
                     sh '''
                         echo "Adding Helm chart repo..."
-                        helm repo add ui-api ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD} || echo "Repo already exists, skipping add"
+                        helm repo add reactui-api ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD} || echo "Repo already exists, skipping add"
                         helm repo update
 
                         echo "Installing Helm release..."
