@@ -19,7 +19,7 @@ spec:
         image: {{ .Values.ui.image.registry }}/{{ .Values.ui.image.repository }}:{{ .Values.ui.image.tag }}
         env:
           - name: "REACT_APP_BACKEND_SERVER" 
-            value: "http://a64c9fbcb0d9f40b2913f3aa3d67169b-863504418.ap-south-1.elb.amazonaws.com/api/"
+            value: "http://af740ea716ba149078c474acc9079d36-1d4bdcc0bdb860e5.elb.ap-south-1.amazonaws.com/api/"
 
         ports:
         - containerPort: {{ .Values.ui.port }}
