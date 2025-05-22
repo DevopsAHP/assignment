@@ -18,7 +18,7 @@ ui:
   replicas: "2"
   image:
     registry: "ahp1609"
-    repository: "reactui"
+    repository: "ui"
     tag: "latest"
   port: "3000"
   service: "ui-service"
