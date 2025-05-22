@@ -73,45 +73,25 @@ pipeline {
                         aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
                     '''
                     
-                    // Use Helm to deploy the package to the EKS cluster
+                    // Remove any existing Helm release
+                    sh '''
+                        echo "Checking if Helm release exists and deleting it if present..."
+                        helm list --namespace default | grep ${HELM_RELEASE_NAME} && helm uninstall ${HELM_RELEASE_NAME} --namespace default || echo "No existing Helm release found."
+                    '''
+                    
+                    // Use Helm to install the new package to the EKS cluster
                     sh '''
                         echo "Adding Helm chart repo..."
                         helm repo add reactui-api ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD}
                         helm repo update
+
+                        echo "Installing Helm release..."
+                        helm install ${HELM_RELEASE_NAME} reactui-api/helm-ui-api --version ${BUILD_NUMBER} --namespace default \
+                          --set ui.image.tag=${BUILD_NUMBER} \
+                          --set api.image.tag=${BUILD_NUMBER}
                     '''
-
-                    echo "Checking if Helm release exists..."
-
-                    // Check if the Helm release exists
-                    def releaseExists = sh(script: "helm list --namespace default -q | grep -w reactui-api-release", returnStatus: true)
-                    if (releaseExists == 0) {
-                        echo "Helm release exists. Upgrading release..."
-                        // Upgrade the existing release if it exists
-                        sh """
-                            helm upgrade reactui-api-release reactui-api/helm-ui-api --version ${BUILD_NUMBER} --namespace default \
-                                --set ui.image.tag=${BUILD_NUMBER} \
-                                --set api.image.tag=${BUILD_NUMBER}
-                        """
-                    } else {
-                        echo "Helm release does not exist. Installing release..."
-                        // Install the release if it doesn't exist
-                        sh """
-                            helm install reactui-api-release reactui-api/helm-ui-api --version ${BUILD_NUMBER} --namespace default \
-                                --set ui.image.tag=${BUILD_NUMBER} \
-                                --set api.image.tag=${BUILD_NUMBER}
-                        """
-                    }
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline successfully completed!'
-        }
-        failure {
-            echo 'Pipeline failed. Check logs for errors.'
         }
     }
 }
