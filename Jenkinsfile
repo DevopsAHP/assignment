@@ -1,93 +1,91 @@
 pipeline {
-    agent any
-
+    agent {
+        label 'docker'
+    }
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
-        DOCKERHUB_USER = 'ahp1609'
-        REACT_IMAGE = "${DOCKERHUB_USER}/reactui"
+        DOCKERHUB_CREDS = credentials('dockerhub-creds')
+        DOCKERHUB_USER = "${DOCKERHUB_CREDS_USR}"
+        DOCKER_USER = "${DOCKERHUB_CREDS_USR}"
+        DOCKER_PASS = "${DOCKERHUB_CREDS_PSW}"
+        REACT_IMAGE = "${DOCKERHUB_USER}/ui"
         API_IMAGE = "${DOCKERHUB_USER}/api"
+
+        JFROG_USER = 'anushahp16@gmail.com'
+        JFROG_PASSWORD = credentials('jfrog_token') // Secret text credential
+        HELM_REPO_URL = 'https://trial8mol56.jfrog.io/artifactory/reactui-api-helm'
+
+        AWS_REGION = 'ap-south-1'  // Adjust with your AWS region
+        EKS_CLUSTER_NAME = 'my-cluster'  // Replace with your EKS cluster name
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/your-username/your-repo.git'
+                git branch: 'main', url: 'https://github.com/DevopsAHP/assignment.git'
             }
         }
 
-        stage('Detect Changes') {
+        stage('Build Docker Images') {
             steps {
                 sh '''
-                    echo "Detecting changes..."
-                    git diff --name-only HEAD~1 > changed_files.txt
-                    grep '^reactui/' changed_files.txt && echo "true" > build_react || echo "false" > build_react
-                    grep '^api/' changed_files.txt && echo "true" > build_api || echo "false" > build_api
+                    echo "Building React UI image..."
+                    docker build -t ${REACT_IMAGE}:${BUILD_NUMBER} ./react-ui
+
+                    echo "Building Flask API image..."
+                    docker build -t ${API_IMAGE}:${BUILD_NUMBER} ./api-server-flask
                 '''
             }
         }
 
-        stage('Build & Push React UI') {
-            when {
-                expression { return readFile('build_react').trim() == 'true' }
-            }
+        stage('Push Docker Images') {
             steps {
                 sh '''
-                    if ! command -v docker &> /dev/null; then
-                        echo "Docker is not installed or not in PATH"
-                        exit 1
-                    fi
-
-                    echo "Building and pushing React UI..."
-                    docker build -t ${REACT_IMAGE}:${BUILD_NUMBER} ./reactui
-                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    echo "Pushing Docker images..."
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                     docker push ${REACT_IMAGE}:${BUILD_NUMBER}
-                '''
-            }
-        }
-
-        stage('Build & Push API') {
-            when {
-                expression { return readFile('build_api').trim() == 'true' }
-            }
-            steps {
-                sh '''
-                    if ! command -v docker &> /dev/null; then
-                        echo "Docker is not installed or not in PATH"
-                        exit 1
-                    fi
-
-                    echo "Building and pushing API..."
-                    docker build -t ${API_IMAGE}:${BUILD_NUMBER} ./api
-                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
                     docker push ${API_IMAGE}:${BUILD_NUMBER}
                 '''
             }
         }
 
-        stage('Deploy with Helm') {
-            when {
-                anyOf {
-                    expression { return readFile('build_react').trim() == 'true' }
-                    expression { return readFile('build_api').trim() == 'true' }
-                }
-            }
-            agent { label 'helm-deployer' }  // Run this stage on a node with Helm + Kubeconfig
-            environment {
-                KUBECONFIG = credentials('kubeconfig') // Secret file on this specific node
-            }
+        stage('Package & Push Helm Charts') {
             steps {
                 sh '''
-                    if ! command -v helm &> /dev/null; then
-                        echo "Helm is not installed or not in PATH"
-                        exit 1
-                    fi
+                    echo "Packaging Helm chart..."
+                    sudo helm package api-ui --version ${BUILD_NUMBER}
 
-                    echo "Running Helm deployment..."
-                    helm upgrade --install myapp ./helm-chart \
-                        --set reactui.image.tag=${BUILD_NUMBER} \
-                        --set api.image.tag=${BUILD_NUMBER}
+                    echo "Pushing Helm chart to JFrog..."
+                    curl -u "$JFROG_USER:$JFROG_PASSWORD" -T api-ui-${BUILD_NUMBER}.tgz ${HELM_REPO_URL}/api-ui-${BUILD_NUMBER}.tgz
                 '''
+            }
+        }
+
+        stage('Deploy to EKS via Helm') {
+            agent {
+                label 'eks-instance'
+            }
+            steps {
+                script {
+                    // Configure AWS CLI to interact with your EKS cluster
+                    sh '''
+                        echo "Configuring AWS CLI and EKS..."
+                        aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
+                    '''
+                    
+                    // Use Helm to deploy the package to the EKS cluster
+                    sh '''
+                        echo "Adding Helm chart repo..."
+                        helm repo add api-ui ${HELM_REPO_URL} --username ${JFROG_USER} --password ${JFROG_PASSWORD}
+                        helm repo update
+
+                        echo "Upgrading Helm release with new image tags..."
+                        helm upgrade api-ui api-ui/api-ui --version ${BUILD_NUMBER} \
+                          --install \
+                          --namespace default \
+                          --set ui.image.tag=${BUILD_NUMBER} \
+                          --set api.image.tag=${BUILD_NUMBER}
+                    '''
+                }
             }
         }
     }
